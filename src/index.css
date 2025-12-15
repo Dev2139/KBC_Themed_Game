@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --background: 230 35% 7%;
+    --foreground: 45 100% 96%;
+
+    --card: 230 30% 12%;
+    --card-foreground: 45 100% 96%;
+
+    --popover: 230 30% 12%;
+    --popover-foreground: 45 100% 96%;
+
+    --primary: 45 100% 50%;
+    --primary-foreground: 230 35% 7%;
+
+    --secondary: 230 30% 18%;
+    --secondary-foreground: 45 100% 96%;
+
+    --muted: 230 25% 20%;
+    --muted-foreground: 220 15% 65%;
+
+    --accent: 280 60% 50%;
+    --accent-foreground: 45 100% 96%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 45 100% 96%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 45 100% 96%;
+
+    --border: 230 25% 25%;
+    --input: 230 25% 20%;
+    --ring: 45 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom KBC Colors */
+    --kbc-gold: 45 100% 50%;
+    --kbc-gold-light: 45 100% 70%;
+    --kbc-blue: 220 80% 45%;
+    --kbc-purple: 270 60% 40%;
+    --kbc-orange: 25 100% 50%;
+    --kbc-green: 142 76% 36%;
+    --kbc-red: 0 72% 51%;
+
+    /* Gradients */
+    --gradient-bg: linear-gradient(135deg, hsl(230 35% 7%) 0%, hsl(250 40% 12%) 50%, hsl(230 35% 7%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(230 30% 15%) 0%, hsl(230 30% 10%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(45 100% 50%) 0%, hsl(35 100% 45%) 100%);
+    --gradient-option: linear-gradient(90deg, hsl(220 80% 25%) 0%, hsl(230 30% 18%) 50%, hsl(220 80% 25%) 100%);
+
+    --sidebar-background: 230 30% 12%;
+    --sidebar-foreground: 45 100% 96%;
+    --sidebar-primary: 45 100% 50%;
+    --sidebar-primary-foreground: 230 35% 7%;
+    --sidebar-accent: 230 30% 18%;
+    --sidebar-accent-foreground: 45 100% 96%;
+    --sidebar-border: 230 25% 25%;
+    --sidebar-ring: 45 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-mukta;
+    background: var(--gradient-bg);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+}
+
+@layer utilities {
+  .text-shadow-gold {
+    text-shadow: 0 0 10px hsl(var(--kbc-gold) / 0.5), 0 0 20px hsl(var(--kbc-gold) / 0.3);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 15px hsl(var(--kbc-gold) / 0.4), 0 0 30px hsl(var(--kbc-gold) / 0.2);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 15px hsl(var(--kbc-green) / 0.6), 0 0 30px hsl(var(--kbc-green) / 0.3);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 15px hsl(var(--kbc-red) / 0.6), 0 0 30px hsl(var(--kbc-red) / 0.3);
+  }
+
+  .option-hexagon {
+    clip-path: polygon(5% 50%, 10% 0%, 90% 0%, 95% 50%, 90% 100%, 10% 100%);
+  }
+
+  .animate-pulse-gold {
+    animation: pulseGold 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseGold {
+    0%, 100% {
+      box-shadow: 0 0 5px hsl(var(--kbc-gold) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 20px hsl(var(--kbc-gold) / 0.8), 0 0 40px hsl(var(--kbc-gold) / 0.4);
+    }
+  }
+
+  .animate-correct {
+    animation: correctPulse 0.5s ease-out;
+  }
+
+  @keyframes correctPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .gradient-border {
+    background: linear-gradient(var(--gradient-card)) padding-box,
+                linear-gradient(135deg, hsl(var(--kbc-gold)), hsl(var(--kbc-orange))) border-box;
+    border: 2px solid transparent;
+  }
+}
