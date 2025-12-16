@@ -10,9 +10,16 @@ export interface Question {
   correctAnswer: 'A' | 'B' | 'C' | 'D';
   prizeAmount: number;
   createdAt?: number;
+  timeLimit?: number; // in seconds
 }
 
-export const PRIZE_LEVELS = [
+export interface PrizeLevel {
+  amount: number;
+  label: string;
+  isMilestone: boolean;
+}
+
+export const PRIZE_LEVELS: PrizeLevel[] = [
   { amount: 100, label: '₹ ૧૦૦', isMilestone: false },
   { amount: 500, label: '₹ ૫૦૦', isMilestone: false },
   { amount: 1000, label: '₹ ૧,૦૦૦', isMilestone: false },
@@ -30,6 +37,17 @@ export const PRIZE_LEVELS = [
   { amount: 5000000, label: '₹ ૫૦,૦૦,૦૦૦', isMilestone: true },
   { amount: 10000000, label: '₹ ૧ કરોડ', isMilestone: true },
 ];
+
+// Helper to format amount as label
+export const formatPrizeLabel = (amount: number): string => {
+  if (amount >= 10000000) {
+    return `₹ ${(amount / 10000000).toLocaleString('gu-IN')} કરોડ`;
+  } else if (amount >= 100000) {
+    return `₹ ${(amount / 100000).toLocaleString('gu-IN')} લાખ`;
+  } else {
+    return `₹ ${amount.toLocaleString('gu-IN')}`;
+  }
+};
 
 export const defaultQuestions: Question[] = [
   {

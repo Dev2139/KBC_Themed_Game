@@ -1,11 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Question, defaultQuestions } from '@/data/defaultQuestions';
+import { Question, defaultQuestions, PrizeLevel, formatPrizeLabel } from '@/data/defaultQuestions';
 
 const STORAGE_KEY = 'kbc_teacher_questions';
+const SETTINGS_KEY = 'kbc_quiz_settings';
 const EXPIRY_TIME = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+interface QuizSettings {
+  defaultTimeLimit: number; // in seconds
+  customPrizeLevels: PrizeLevel[];
+}
+
+const DEFAULT_SETTINGS: QuizSettings = {
+  defaultTimeLimit: 30,
+  customPrizeLevels: [],
+};
 
 export function useQuestions() {
   const [teacherQuestions, setTeacherQuestions] = useState<Question[]>([]);
+  const [settings, setSettings] = useState<QuizSettings>(DEFAULT_SETTINGS);
+
+  // Load settings
+  useEffect(() => {
+    const storedSettings = localStorage.getItem(SETTINGS_KEY);
+    if (storedSettings) {
+      setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) });
+    }
+  }, []);
 
   // Load and clean expired questions
   const loadQuestions = useCallback(() => {
@@ -33,11 +53,41 @@ export function useQuestions() {
     return () => clearInterval(interval);
   }, [loadQuestions]);
 
+  const updateSettings = useCallback((newSettings: Partial<QuizSettings>) => {
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const addCustomPrizeLevel = useCallback((amount: number) => {
+    const label = formatPrizeLabel(amount);
+    const newLevel: PrizeLevel = {
+      amount,
+      label,
+      isMilestone: false,
+    };
+    
+    setSettings((prev) => {
+      const existingLevels = prev.customPrizeLevels.filter(l => l.amount !== amount);
+      const updated = { 
+        ...prev, 
+        customPrizeLevels: [...existingLevels, newLevel].sort((a, b) => a.amount - b.amount)
+      };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
+      return updated;
+    });
+    
+    return newLevel;
+  }, []);
+
   const addQuestion = useCallback((question: Omit<Question, 'id' | 'createdAt'>) => {
     const newQuestion: Question = {
       ...question,
       id: `teacher-${Date.now()}`,
       createdAt: Date.now(),
+      timeLimit: question.timeLimit || settings.defaultTimeLimit,
     };
     
     const updated = [...teacherQuestions, newQuestion];
@@ -45,7 +95,7 @@ export function useQuestions() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     
     return newQuestion;
-  }, [teacherQuestions]);
+  }, [teacherQuestions, settings.defaultTimeLimit]);
 
   const deleteQuestion = useCallback((id: string) => {
     const updated = teacherQuestions.filter((q) => q.id !== id);
@@ -54,12 +104,13 @@ export function useQuestions() {
   }, [teacherQuestions]);
 
   const getAllQuestions = useCallback(() => {
-    // Combine teacher questions with default questions
-    // Teacher questions take priority based on prize amount
-    const allQuestions = [...teacherQuestions, ...defaultQuestions];
+    // If teacher has created at least one question, only show teacher questions
+    if (teacherQuestions.length > 0) {
+      return teacherQuestions.sort((a, b) => a.prizeAmount - b.prizeAmount);
+    }
     
-    // Sort by prize amount
-    return allQuestions.sort((a, b) => a.prizeAmount - b.prizeAmount);
+    // Otherwise, show default questions
+    return defaultQuestions.sort((a, b) => a.prizeAmount - b.prizeAmount);
   }, [teacherQuestions]);
 
   const getTimeRemaining = useCallback((createdAt: number) => {
@@ -77,9 +128,12 @@ export function useQuestions() {
   return {
     teacherQuestions,
     defaultQuestions,
+    settings,
     addQuestion,
     deleteQuestion,
     getAllQuestions,
     getTimeRemaining,
+    updateSettings,
+    addCustomPrizeLevel,
   };
 }

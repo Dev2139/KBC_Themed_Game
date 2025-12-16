@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuestions } from '@/hooks/useQuestions';
 import { usePrizeMapping, DEFAULT_PRIZE_GIFTS } from '@/hooks/usePrizeMapping';
-import { PRIZE_LEVELS } from '@/data/defaultQuestions';
+import { PRIZE_LEVELS, formatPrizeLabel } from '@/data/defaultQuestions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,13 +13,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, Plus, Trash2, Clock, Gift, RotateCcw } from 'lucide-react';
+import { Home, Plus, Trash2, Clock, Gift, RotateCcw, Timer, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function TeacherPanel() {
   const navigate = useNavigate();
-  const { teacherQuestions, addQuestion, deleteQuestion, getTimeRemaining } = useQuestions();
+  const { teacherQuestions, addQuestion, deleteQuestion, getTimeRemaining, settings, updateSettings, addCustomPrizeLevel } = useQuestions();
   const { prizeMapping, updatePrizeGift, resetToDefaults } = usePrizeMapping();
 
   const [formData, setFormData] = useState({
@@ -30,10 +30,20 @@ export function TeacherPanel() {
     optionD: '',
     correctAnswer: '' as 'A' | 'B' | 'C' | 'D' | '',
     prizeAmount: '',
+    customPrizeAmount: '',
+    timeLimit: '',
   });
 
   const [editingPrize, setEditingPrize] = useState<number | null>(null);
   const [editGiftValue, setEditGiftValue] = useState('');
+  const [useCustomPrize, setUseCustomPrize] = useState(false);
+
+  // Combine default and custom prize levels
+  const allPrizeLevels = [...PRIZE_LEVELS, ...settings.customPrizeLevels]
+    .sort((a, b) => a.amount - b.amount)
+    .filter((level, index, self) => 
+      index === self.findIndex(l => l.amount === level.amount)
+    );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,11 +54,31 @@ export function TeacherPanel() {
       !formData.optionB ||
       !formData.optionC ||
       !formData.optionD ||
-      !formData.correctAnswer ||
-      !formData.prizeAmount
+      !formData.correctAnswer
     ) {
       toast.error('કૃપા કરીને બધી માહિતી ભરો');
       return;
+    }
+
+    let prizeAmount: number;
+    if (useCustomPrize) {
+      if (!formData.customPrizeAmount) {
+        toast.error('કૃપા કરીને ઇનામ રકમ લખો');
+        return;
+      }
+      prizeAmount = parseInt(formData.customPrizeAmount);
+      if (isNaN(prizeAmount) || prizeAmount <= 0) {
+        toast.error('કૃપા કરીને સાચી રકમ લખો');
+        return;
+      }
+      // Add custom prize level if it doesn't exist
+      addCustomPrizeLevel(prizeAmount);
+    } else {
+      if (!formData.prizeAmount) {
+        toast.error('કૃપા કરીને ઇનામ રકમ પસંદ કરો');
+        return;
+      }
+      prizeAmount = parseInt(formData.prizeAmount);
     }
 
     addQuestion({
@@ -60,7 +90,8 @@ export function TeacherPanel() {
         D: formData.optionD,
       },
       correctAnswer: formData.correctAnswer as 'A' | 'B' | 'C' | 'D',
-      prizeAmount: parseInt(formData.prizeAmount),
+      prizeAmount,
+      timeLimit: formData.timeLimit ? parseInt(formData.timeLimit) : settings.defaultTimeLimit,
     });
 
     setFormData({
@@ -71,7 +102,10 @@ export function TeacherPanel() {
       optionD: '',
       correctAnswer: '',
       prizeAmount: '',
+      customPrizeAmount: '',
+      timeLimit: '',
     });
+    setUseCustomPrize(false);
 
     toast.success('પ્રશ્ન સફળતાપૂર્વક ઉમેરાયો!');
   };
@@ -95,9 +129,17 @@ export function TeacherPanel() {
     toast.success('ઇનામ ડિફોલ્ટ પર રીસેટ થયા!');
   };
 
+  const handleTimeLimitChange = (value: string) => {
+    const timeLimit = parseInt(value);
+    if (!isNaN(timeLimit) && timeLimit > 0) {
+      updateSettings({ defaultTimeLimit: timeLimit });
+      toast.success(`ડિફોલ્ટ સમય ${timeLimit} સેકન્ડ સેટ થયો`);
+    }
+  };
+
   return (
     <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <Button onClick={() => navigate('/')} variant="ghost" size="sm" className="gap-2">
@@ -110,6 +152,43 @@ export function TeacherPanel() {
           <div className="w-20" />
         </div>
 
+        {/* Timer Settings */}
+        <Card className="mb-6 bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-primary text-lg">
+              <Settings className="w-5 h-5" />
+              સમય સેટિંગ
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Timer className="w-4 h-4 text-muted-foreground" />
+                <Label>ડિફોલ્ટ સમય (સેકન્ડ):</Label>
+              </div>
+              <Select
+                value={settings.defaultTimeLimit.toString()}
+                onValueChange={handleTimeLimitChange}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 સેકન્ડ</SelectItem>
+                  <SelectItem value="30">30 સેકન્ડ</SelectItem>
+                  <SelectItem value="45">45 સેકન્ડ</SelectItem>
+                  <SelectItem value="60">60 સેકન્ડ</SelectItem>
+                  <SelectItem value="90">90 સેકન્ડ</SelectItem>
+                  <SelectItem value="120">120 સેકન્ડ</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                (દરેક પ્રશ્ન માટે અલગ સમય પણ સેટ કરી શકાય છે)
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Add Question Form */}
           <Card className="gradient-border bg-card">
@@ -118,6 +197,11 @@ export function TeacherPanel() {
                 <Plus className="w-5 h-5" />
                 નવો પ્રશ્ન ઉમેરો
               </CardTitle>
+              {teacherQuestions.length > 0 && (
+                <p className="text-xs text-success mt-1">
+                  ✓ તમારા પ્રશ્નો જ બતાવાશે (ડિફોલ્ટ પ્રશ્નો છુપાવેલ છે)
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -196,23 +280,63 @@ export function TeacherPanel() {
                     </Select>
                   </div>
                   <div>
+                    <Label className="flex items-center gap-2">
+                      <Timer className="w-3 h-3" />
+                      સમય (સેકન્ડ)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={formData.timeLimit}
+                      onChange={(e) => setFormData({ ...formData, timeLimit: e.target.value })}
+                      placeholder={`${settings.defaultTimeLimit}`}
+                      className="mt-1"
+                      min={5}
+                      max={300}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
                     <Label>ઇનામ રકમ</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setUseCustomPrize(!useCustomPrize)}
+                      className="text-xs h-6"
+                    >
+                      {useCustomPrize ? 'યાદીમાંથી પસંદ કરો' : '+ કસ્ટમ રકમ'}
+                    </Button>
+                  </div>
+                  {useCustomPrize ? (
+                    <Input
+                      type="number"
+                      value={formData.customPrizeAmount}
+                      onChange={(e) => setFormData({ ...formData, customPrizeAmount: e.target.value })}
+                      placeholder="દા.ત. 20000000 (૨ કરોડ)"
+                      min={1}
+                    />
+                  ) : (
                     <Select
                       value={formData.prizeAmount}
                       onValueChange={(value) => setFormData({ ...formData, prizeAmount: value })}
                     >
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger>
                         <SelectValue placeholder="પસંદ કરો" />
                       </SelectTrigger>
                       <SelectContent>
-                        {PRIZE_LEVELS.map((level) => (
+                        {allPrizeLevels.map((level) => (
                           <SelectItem key={level.amount} value={level.amount.toString()}>
                             {level.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ૧ કરોડથી વધુ રકમ માટે કસ્ટમ રકમ વાપરો
+                  </p>
                 </div>
 
                 <Button type="submit" className="w-full gap-2">
@@ -247,12 +371,12 @@ export function TeacherPanel() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                {PRIZE_LEVELS.map((level) => (
+                {allPrizeLevels.map((level) => (
                   <div
                     key={level.amount}
                     className="flex items-center gap-2 bg-secondary/30 rounded-lg p-2"
                   >
-                    <span className="text-sm font-medium text-primary min-w-[80px]">
+                    <span className="text-sm font-medium text-primary min-w-[100px]">
                       {level.label}
                     </span>
                     <span className="text-muted-foreground">=</span>
@@ -281,7 +405,7 @@ export function TeacherPanel() {
                         }}
                         className="flex-1 text-left text-sm text-foreground hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
                       >
-                        🎁 {prizeMapping[level.amount] || DEFAULT_PRIZE_GIFTS[level.amount]}
+                        🎁 {prizeMapping[level.amount] || DEFAULT_PRIZE_GIFTS[level.amount] || 'સેટ કરો'}
                       </button>
                     )}
                   </div>
@@ -296,29 +420,46 @@ export function TeacherPanel() {
               <CardTitle className="text-foreground">
                 સક્રિય પ્રશ્નો ({teacherQuestions.length})
               </CardTitle>
+              {teacherQuestions.length > 0 && (
+                <p className="text-xs text-success">
+                  ડિફોલ્ટ પ્રશ્નો છુપાવેલ છે
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               {teacherQuestions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <p>હજુ કોઈ પ્રશ્ન ઉમેર્યો નથી</p>
                   <p className="text-sm mt-2">પ્રશ્નો ૨૪ કલાક પછી આપમેળે કાઢી નખાશે</p>
+                  <p className="text-xs mt-1 text-warning">
+                    ⚠️ જ્યાં સુધી તમે પ્રશ્ન ઉમેરો નહીં ત્યાં સુધી ડિફોલ્ટ પ્રશ્નો બતાવાશે
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {teacherQuestions.map((q) => (
+                  {teacherQuestions.map((q, index) => (
                     <div
                       key={q.id}
                       className="bg-secondary/50 rounded-lg p-3 border border-border"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
+                              #{index + 1}
+                            </span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Timer className="w-3 h-3" />
+                              {q.timeLimit || 30}s
+                            </span>
+                          </div>
                           <p className="font-medium text-foreground truncate">{q.question}</p>
                           <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
                             <span className="text-success">
                               જવાબ: {q.correctAnswer}
                             </span>
                             <span className="text-primary">
-                              ₹{q.prizeAmount.toLocaleString('gu-IN')}
+                              {formatPrizeLabel(q.prizeAmount)}
                             </span>
                           </div>
                           {q.createdAt && (
